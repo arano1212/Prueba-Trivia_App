@@ -1,58 +1,83 @@
 import React, { useState, useEffect } from 'react'
+import Button from './Button' // Asegúrate de ajustar la ruta correcta del componente Button
 
 const TriviaApp = () => {
   const [questions, setQuestions] = useState([])
   const [score, setScore] = useState(0)
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
 
-  const fetchTrivia = async (category, difficulty, type) => {
+  const fetchTrivia = async () => {
     try {
-      const response = await fetch(`https://opentdb.com/api.php?amount=10&category=${category}&difficulty=${difficulty}&type=${type}`)
-      const data = await response.json()
-      setQuestions(data.results)
+      const URL = 'https://opentdb.com/api.php?amount=10'
+      const response = await fetch(URL)
+      if (response.ok) {
+        const data = await response.json()
+        setQuestions(data.results)
+        setCurrentQuestionIndex(0)
+        setScore(0)
+      } else {
+        console.log(`Response status code: ${response.status}, ok? ${response.ok}`)
+        const alternativeData = await response.json()
+        console.log({ alternativeData })
+      }
     } catch (error) {
       console.error('Error fetching trivia', error)
     }
   }
-  const handleAnswer = (questionIndex, selectedAnswer) => {
-    const correctAnswer = questions[questionIndex].correct_answer
+
+  const handleAnswer = (selectedAnswer) => {
+    const currentQuestion = questions[currentQuestionIndex]
+    const correctAnswer = currentQuestion.correct_answer
+
     if (selectedAnswer === correctAnswer) {
       setScore(score + 100)
+    }
+
+    const nextQuestionIndex = currentQuestionIndex + 1
+
+    if (nextQuestionIndex < questions.length) {
+      setCurrentQuestionIndex(nextQuestionIndex)
+    } else {
+      // All questions answered
+      setQuestions([])
     }
   }
 
   const resetTrivia = () => {
-    setQuestions([])
-    setScore(0)
+    fetchTrivia()
   }
 
   useEffect(() => {
-    fetchTrivia('any', 'easy', 'multiple')
+    fetchTrivia()
   }, [])
+
+  if (questions.length === 0) {
+    return (
+      <div>
+        <p>Score: {score}</p>
+        <p>No questions left!</p>
+        <Button onClick={resetTrivia} text='Generate New Trivia' />
+      </div>
+    )
+  }
+
+  const currentQuestion = questions[currentQuestionIndex]
 
   return (
     <>
       <div>
         <p>Score: {score}</p>
+        <p>{currentQuestion.question}</p>
         <ul>
-          {questions.map((question, index) => (
-            <li key={index}>
-              <p>{question.question}</p>
-              <ul>
-                {question.incorrect_answers.map((answer, answerIndex) => (
-                  <li key={answerIndex}>
-                    <button onClick={() => handleAnswer(index, answer)}>{answer}</button>
-                  </li>
-                ))}
-                <li>
-                  <button onClick={() => handleAnswer(index, question.correct_answer)}>
-                    {question.correct_answer}
-                  </button>
-                </li>
-              </ul>
+          {currentQuestion.incorrect_answers.map((answer, answerIndex) => (
+            <li key={answerIndex}>
+              <Button onClick={() => handleAnswer(answer)} text={answer} />
             </li>
           ))}
+          <li>
+            <Button onClick={() => handleAnswer(currentQuestion.correct_answer)} text={currentQuestion.correct_answer} />
+          </li>
         </ul>
-        <button onClick={() => resetTrivia()}>Crear Nueva Trivia</button>
       </div>
     </>
   )
